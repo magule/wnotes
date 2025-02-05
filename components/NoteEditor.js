@@ -94,7 +94,66 @@ export default function NoteEditor() {
     }
   };
 
-  // Modify the handleTyping function to auto-save immediately
+  // Save note – new notes require a tag while updates allow tag removal
+  const handleSave = () => {
+    // For new notes, enforce mandatory tagging
+    if (!currentNoteId && !tag.trim()) {
+      setShowTagSuggestions(true);
+      return;
+    }
+
+    // Don't save if there's no content
+    if (!title.trim() && !content.trim()) {
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const newNote = {
+      id: currentNoteId || Date.now(),
+      title: title || "Untitled",
+      content,
+      tag,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+
+    let updatedNotes;
+    if (currentNoteId) {
+      // Update existing note
+      updatedNotes = myNotes.map((note) =>
+        note.id === currentNoteId ? newNote : note
+      );
+    } else {
+      // Create a new note
+      updatedNotes = [newNote, ...myNotes];
+      setCurrentNoteId(newNote.id);
+    }
+
+    setMyNotes(updatedNotes);
+    localStorage.setItem("my-notes", JSON.stringify(updatedNotes));
+    localStorage.setItem(
+      "current-note",
+      JSON.stringify({ id: newNote.id, title, content, tag })
+    );
+
+    setStoppedTypingTime(Date.now());
+    setJustStopped(true);
+    setIsMyNotesHighlighted(true);
+    
+    setTimeout(() => {
+      setJustStopped(false);
+      setIsMyNotesHighlighted(false);
+    }, 4000);
+
+    // Automatically add new tag to categories if not already present
+    if (tag && !categories.includes(tag)) {
+      const newCategories = [...categories, tag];
+      setCategories(newCategories);
+      localStorage.setItem("categories", JSON.stringify(newCategories));
+    }
+  };
+
+  // Modify the handleTyping function to fix auto-save
   const handleTyping = () => {
     if (!isTyping) {
       setIsTyping(true);
@@ -109,22 +168,16 @@ export default function NoteEditor() {
       clearTimeout(saveTimeoutRef.current);
     }
 
-    // Auto-save immediately
-    if (title || content || tag) {
+    // Create or update note immediately if there's content
+    if (title.trim() || content.trim()) {
       const timestamp = new Date().toISOString();
-      if (currentNoteId) {
-        // Update existing note
-        const updatedNotes = myNotes.map((note) =>
-          note.id === currentNoteId
-            ? { ...note, title: title || "Untitled", content, tag, updatedAt: timestamp }
-            : note
-        );
-        setMyNotes(updatedNotes);
-        localStorage.setItem("my-notes", JSON.stringify(updatedNotes));
-      } else {
-        // Create a new note
+      
+      // If no currentNoteId or this is the first ever note, create a new note
+      if (!currentNoteId || myNotes.length === 0) {
+        const newId = Date.now();
+        setCurrentNoteId(newId);
         const newNote = {
-          id: Date.now(),
+          id: newId,
           title: title || "Untitled",
           content,
           tag,
@@ -134,12 +187,30 @@ export default function NoteEditor() {
         const updatedNotes = [newNote, ...myNotes];
         setMyNotes(updatedNotes);
         localStorage.setItem("my-notes", JSON.stringify(updatedNotes));
-        setCurrentNoteId(newNote.id);
+        localStorage.setItem(
+          "current-note",
+          JSON.stringify({ id: newId, title, content, tag })
+        );
+      } else {
+        // Update existing note
+        const updatedNotes = myNotes.map((note) =>
+          note.id === currentNoteId
+            ? {
+                ...note,
+                title: title || "Untitled",
+                content,
+                tag,
+                updatedAt: timestamp,
+              }
+            : note
+        );
+        setMyNotes(updatedNotes);
+        localStorage.setItem("my-notes", JSON.stringify(updatedNotes));
+        localStorage.setItem(
+          "current-note",
+          JSON.stringify({ id: currentNoteId, title, content, tag })
+        );
       }
-      localStorage.setItem(
-        "current-note",
-        JSON.stringify({ id: currentNoteId, title, content, tag })
-      );
     }
 
     // Mark typing as stopped after 1 second of inactivity
@@ -172,54 +243,6 @@ export default function NoteEditor() {
       setCategories(JSON.parse(savedCategories));
     }
   }, []);
-
-  // Save note – new notes require a tag while updates allow tag removal
-  const handleSave = () => {
-    // For new notes, enforce mandatory tagging
-    if (!currentNoteId && !tag.trim()) {
-      alert("A tag is required for the note.");
-      return;
-    }
-    const timestamp = new Date().toISOString();
-    if (currentNoteId) {
-      // Update existing note
-      const updatedNotes = myNotes.map((note) =>
-        note.id === currentNoteId
-          ? { ...note, title: title || "Untitled", content, tag, updatedAt: timestamp }
-          : note
-      );
-      setMyNotes(updatedNotes);
-      localStorage.setItem("my-notes", JSON.stringify(updatedNotes));
-    } else {
-      // Create a new note
-      const newNote = {
-        id: Date.now(),
-        title: title || "Untitled",
-        content,
-        tag,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      };
-      const updatedNotes = [newNote, ...myNotes];
-      setMyNotes(updatedNotes);
-      localStorage.setItem("my-notes", JSON.stringify(updatedNotes));
-      setCurrentNoteId(newNote.id);
-    }
-    setStoppedTypingTime(Date.now());
-    setJustStopped(true);
-    setIsMyNotesHighlighted(true);
-    setTimeout(() => {
-      setJustStopped(false);
-      setIsMyNotesHighlighted(false);
-    }, 4000);
-
-    // Automatically add new tag to categories if not already present
-    if (tag && !categories.includes(tag)) {
-      const newCategories = [...categories, tag];
-      setCategories(newCategories);
-      localStorage.setItem("categories", JSON.stringify(newCategories));
-    }
-  };
 
   const handleShare = async () => {
     try {

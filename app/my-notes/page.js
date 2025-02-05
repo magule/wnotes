@@ -275,6 +275,36 @@ export default function MyNotes() {
 
       {/* Main Content */}
       <div className="max-w-[1200px] mx-auto px-10 py-10">
+        {/* Welcome Message */}
+        <div className="mb-12 p-6 rounded-xl border border-white/[0.03] bg-white/[0.02]">
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-xl bg-blue-500/10">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-xl font-medium text-white/90 mb-2">Welcome to wNotes! 👋</h2>
+              <div className="space-y-3 text-sm text-white/60">
+                <p>
+                  Your notes are stored locally in your browser's cache. While this makes them easily accessible, please keep in mind:
+                </p>
+                <ul className="list-disc list-inside space-y-1 ml-1">
+                  <li>Clearing your browser cache will delete your notes</li>
+                  <li>Notes are only accessible from this browser and device</li>
+                  <li>For safekeeping, regularly export your notes using the "Export All Notes" button</li>
+                </ul>
+                <div className="flex items-center gap-2 mt-4">
+                  <div className="h-1 w-1 rounded-full bg-white/20"></div>
+                  <p className="text-white/40 text-xs">
+                    Pro tip: Use categories to organize your notes and the export feature to keep backups
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <h1 className="text-2xl font-medium text-white/90 mb-8">
           My Notes <span className="text-white/40">({notes.length})</span>
         </h1>
