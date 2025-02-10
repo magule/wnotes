@@ -223,44 +223,50 @@ export default function MyNotes() {
   return (
     <div className="min-h-screen bg-[#0A0A0A]">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-[#0A0A0A]/80 backdrop-blur-xl border-b border-white/[0.03]">
-        <div className="max-w-[1200px] mx-auto px-10 py-6 flex items-center justify-between">
+      <div className="sticky top-0 z-10 bg-[#0A0A0A]/80 backdrop-blur-xl border-b border-white/[0.04]">
+        <div className="max-w-[1200px] mx-auto px-6 py-4 flex items-center justify-between">
           <button 
             onClick={() => router.push('/')}
-            className="text-lg font-medium text-white/90 hover:text-blue-400 transition-all flex items-center gap-3"
+            className="flex items-center gap-3 group"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-blue-400">
-              <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span className="bg-gradient-to-r from-blue-400 to-blue-500 text-transparent bg-clip-text font-semibold">wNotes</span>
+            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500/20 transition-all">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <span className="text-lg font-semibold bg-gradient-to-r from-indigo-400 to-pink-400 text-transparent bg-clip-text">
+              wNotes
+            </span>
           </button>
+
           <div className="relative" ref={exportMenuRef}>
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="text-xs px-3 py-1.5 rounded-md bg-white/[0.02] text-white/60 hover:text-white/90 hover:bg-white/[0.04] transition-all duration-200 flex items-center gap-1.5"
+              className="px-4 py-2 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 
+                       transition-all duration-200 text-sm font-medium flex items-center gap-2"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
               </svg>
               Export All Notes
             </button>
 
             {showExportMenu && (
-              <div className="absolute top-full right-0 mt-1 bg-black/95 border border-white/[0.03] rounded-lg shadow-xl py-2 min-w-[160px] backdrop-blur-xl z-20">
+              <div className="absolute top-full right-0 mt-2 w-56 rounded-lg border border-white/[0.04] 
+                            bg-[#0A0A0A]/95 backdrop-blur-xl shadow-2xl py-1 z-50">
                 {[
-                  { format: 'txt', label: 'Text (.txt)' },
+                  { format: 'txt', label: 'Text File (.txt)' },
                   { format: 'rtf', label: 'Rich Text (.rtf)' },
-                  { format: 'word', label: 'Word (.docx)' },
-                  { format: 'pdf', label: 'PDF (.pdf)' }
+                  { format: 'word', label: 'Word Document (.docx)' },
+                  { format: 'pdf', label: 'PDF Document (.pdf)' }
                 ].map(({ format, label }) => (
                   <button
                     key={format}
                     onClick={() => handleBulkExport(format)}
-                    className="w-full px-3 py-2 text-left text-xs text-white/90 hover:bg-white/[0.03] transition-colors flex items-center gap-2"
+                    className="w-full px-4 py-2.5 text-left text-sm text-white/80 hover:bg-white/[0.04] 
+                             hover:text-white/90 transition-all flex items-center gap-3"
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
                       <polyline points="13 2 13 9 20 9"/>
                     </svg>
@@ -274,29 +280,42 @@ export default function MyNotes() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-[1200px] mx-auto px-10 py-10">
-        {/* Welcome Message */}
-        <div className="mb-12 p-6 rounded-xl border border-white/[0.03] bg-white/[0.02]">
-          <div className="flex items-start gap-4">
-            <div className="p-3 rounded-xl bg-blue-500/10">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
+      <div className="max-w-[1200px] mx-auto px-6 py-10">
+        {/* Welcome Card */}
+        <div className="mb-12 p-8 rounded-2xl border border-white/[0.04] bg-gradient-to-br from-indigo-500/5 to-pink-500/5 backdrop-blur-sm">
+          <div className="flex items-start gap-6">
+            <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-500/10 to-pink-500/10 border border-white/[0.04]">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-indigo-400">
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
               </svg>
             </div>
             <div>
-              <h2 className="text-xl font-medium text-white/90 mb-2">Welcome to wNotes! 👋</h2>
-              <div className="space-y-3 text-sm text-white/60">
-                <p>
+              <h2 className="text-2xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400 mb-4">
+                Welcome to wNotes! 👋
+              </h2>
+              <div className="space-y-4 text-sm">
+                <p className="text-white/70">
                   Your notes are stored locally in your browser's cache. While this makes them easily accessible, please keep in mind:
                 </p>
-                <ul className="list-disc list-inside space-y-1 ml-1">
-                  <li>Clearing your browser cache will delete your notes</li>
-                  <li>Notes are only accessible from this browser and device</li>
-                  <li>For safekeeping, regularly export your notes using the "Export All Notes" button</li>
+                <ul className="space-y-2 text-white/60">
+                  <li className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-400/40"></div>
+                    Clearing your browser cache will delete your notes
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-400/40"></div>
+                    Notes are only accessible from this browser and device
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-400/40"></div>
+                    For safekeeping, regularly export your notes using the "Export All Notes" button
+                  </li>
                 </ul>
-                <div className="flex items-center gap-2 mt-4">
-                  <div className="h-1 w-1 rounded-full bg-white/20"></div>
-                  <p className="text-white/40 text-xs">
+                <div className="flex items-center gap-3 mt-4 p-3 rounded-lg bg-indigo-500/5 border border-indigo-500/10">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-indigo-400">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                  </svg>
+                  <p className="text-white/50 text-xs">
                     Pro tip: Use categories to organize your notes and the export feature to keep backups
                   </p>
                 </div>
@@ -305,65 +324,92 @@ export default function MyNotes() {
           </div>
         </div>
 
-        <h1 className="text-2xl font-medium text-white/90 mb-8">
-          My Notes <span className="text-white/40">({notes.length})</span>
-        </h1>
+        {/* Notes Section */}
+        <div className="mb-8 flex items-center justify-between">
+          <h1 className="text-2xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400">
+            My Notes <span className="text-white/40 text-lg">({notes.length})</span>
+          </h1>
+          <button
+            onClick={() => router.push('/')}
+            className="px-4 py-2 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 
+                     transition-all duration-200 text-sm font-medium flex items-center gap-2"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            New Note
+          </button>
+        </div>
 
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {notes.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-white/40 mb-4">No saved notes yet.</div>
-              <button
-                onClick={() => router.push('/')}
-                className="text-xs px-3 py-1.5 rounded-md bg-white/[0.02] text-white/60 hover:text-white/90 hover:bg-white/[0.04] transition-all duration-200 inline-flex items-center gap-1.5"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 5v14M5 12h14"/>
-                </svg>
-                Create New Note
-              </button>
+            <div className="col-span-full text-center py-20">
+              <div className="inline-flex flex-col items-center gap-4">
+                <div className="p-4 rounded-full bg-indigo-500/10">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-indigo-400">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                </div>
+                <div className="text-white/40">No saved notes yet</div>
+                <button
+                  onClick={() => router.push('/')}
+                  className="px-4 py-2 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 
+                           transition-all duration-200 text-sm font-medium flex items-center gap-2"
+                >
+                  Create Your First Note
+                </button>
+              </div>
             </div>
           ) : (
             notes.map(note => (
               <div
                 key={note.id}
                 onClick={() => handleNoteClick(note)}
-                className="group p-5 rounded-xl border border-white/[0.03] hover:border-white/[0.08] bg-white/[0.02] cursor-pointer transition-all duration-200 hover:bg-white/[0.03] hover:translate-y-[-2px]"
+                className="group p-6 rounded-xl border border-white/[0.04] hover:border-indigo-500/20 
+                         bg-white/[0.02] hover:bg-gradient-to-br hover:from-indigo-500/5 hover:to-pink-500/5 
+                         cursor-pointer transition-all duration-300 hover:scale-[1.02]"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-lg font-medium text-white/90 group-hover:text-blue-400 transition-colors">
+                <div className="flex items-start justify-between mb-4">
+                  <h2 className="text-lg font-medium text-white/90 group-hover:text-transparent 
+                               group-hover:bg-clip-text group-hover:bg-gradient-to-r 
+                               group-hover:from-indigo-400 group-hover:to-pink-400 transition-all line-clamp-1">
                     {note.title || 'Untitled'}
                   </h2>
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                     <div className="relative">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setDownloadingNote(downloadingNote === note.id ? null : note.id);
                         }}
-                        className="text-white/40 hover:text-white/90 transition-colors p-1 rounded-md hover:bg-white/[0.03]"
+                        className="p-2 rounded-lg hover:bg-white/[0.04] text-white/40 
+                                 hover:text-indigo-400 transition-all"
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
                         </svg>
                       </button>
+
                       {downloadingNote === note.id && (
                         <div 
                           ref={downloadMenuRef}
-                          className="absolute right-0 top-full mt-1 bg-black/95 border border-white/[0.03] rounded-lg shadow-xl py-2 min-w-[160px] backdrop-blur-xl z-20"
+                          className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-white/[0.04] 
+                                  bg-[#0A0A0A]/95 backdrop-blur-xl shadow-2xl py-1 z-50"
                         >
                           {[
-                            { format: 'txt', label: 'Text (.txt)' },
+                            { format: 'txt', label: 'Text File (.txt)' },
                             { format: 'rtf', label: 'Rich Text (.rtf)' },
-                            { format: 'word', label: 'Word (.docx)' },
-                            { format: 'pdf', label: 'PDF (.pdf)' }
+                            { format: 'word', label: 'Word Document (.docx)' },
+                            { format: 'pdf', label: 'PDF Document (.pdf)' }
                           ].map(({ format, label }) => (
                             <button
                               key={format}
                               onClick={(e) => handleDownload(e, note, format)}
-                              className="w-full px-3 py-2 text-left text-xs text-white/90 hover:bg-white/[0.03] transition-colors flex items-center gap-2"
+                              className="w-full px-4 py-2.5 text-left text-sm text-white/80 
+                                       hover:bg-white/[0.04] hover:text-white/90 transition-all 
+                                       flex items-center gap-3"
                             >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
                                 <polyline points="13 2 13 9 20 9"/>
                               </svg>
@@ -373,25 +419,30 @@ export default function MyNotes() {
                         </div>
                       )}
                     </div>
+
                     <button
                       onClick={(e) => handleDelete(e, note.id)}
-                      className="text-white/40 hover:text-red-400 transition-colors p-1 rounded-md hover:bg-white/[0.03]"
+                      className="p-2 rounded-lg hover:bg-white/[0.04] text-white/40 
+                               hover:text-red-400 transition-all"
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M18 6L6 18M6 6l12 12"/>
                       </svg>
                     </button>
                   </div>
                 </div>
-                <p className="text-sm text-white/50 mb-3 line-clamp-2">
+
+                <p className="text-sm text-white/50 mb-4 line-clamp-3 min-h-[3rem]">
                   {note.content || 'No content'}
                 </p>
-                <div className="flex items-center justify-between">
+
+                <div className="flex items-center justify-between mt-auto">
                   <div className="text-xs text-white/30">
                     {new Date(note.updatedAt).toLocaleString()}
                   </div>
                   {note.tag && (
-                    <div className="text-xs px-2 py-1 rounded-md bg-white/[0.02] text-white/40">
+                    <div className="px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-500/10 
+                                 text-indigo-400 border border-indigo-500/20">
                       {note.tag}
                     </div>
                   )}

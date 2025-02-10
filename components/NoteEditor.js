@@ -42,10 +42,14 @@ export default function NoteEditor() {
   const actionMenuRef = useRef(null);
   const [showActionMenu, setShowActionMenu] = useState(false);
 
+  // Add new state for current timestamp
+  const [currentTimestamp, setCurrentTimestamp] = useState(null);
+
   // Force re-render every second for the "Last updated" display
   useEffect(() => {
+    setCurrentTimestamp(Date.now());
     const interval = setInterval(() => {
-      setTick((t) => t + 1);
+      setCurrentTimestamp(Date.now());
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -73,15 +77,15 @@ export default function NoteEditor() {
   const getTimeDisplay = () => {
     if (!stoppedTypingTime && !isTyping) return "Never";
 
-    if (isTyping) {
-      const start = typingStartTime || Date.now();
-      const seconds = Math.max(1, Math.floor((Date.now() - start) / 1000));
+    if (isTyping && currentTimestamp) {
+      const start = typingStartTime || currentTimestamp;
+      const seconds = Math.max(1, Math.floor((currentTimestamp - start) / 1000));
       if (seconds < 60) {
         return `${seconds} second${seconds !== 1 ? "s" : ""} ago`;
       }
       return formatTime(Math.floor(seconds / 60) * 60);
-    } else {
-      const diffSeconds = Math.floor((Date.now() - stoppedTypingTime) / 1000);
+    } else if (stoppedTypingTime && currentTimestamp) {
+      const diffSeconds = Math.floor((currentTimestamp - stoppedTypingTime) / 1000);
       if (diffSeconds < 2 || justStopped) {
         return "Just now";
       }
@@ -92,6 +96,7 @@ export default function NoteEditor() {
         return formatTime(Math.floor(diffSeconds / 60) * 60);
       }
     }
+    return "Never";
   };
 
   // Save note – new notes require a tag while updates allow tag removal
@@ -109,7 +114,7 @@ export default function NoteEditor() {
 
     const timestamp = new Date().toISOString();
     const newNote = {
-      id: currentNoteId || Date.now(),
+      id: currentNoteId || currentTimestamp,
       title: title || "Untitled",
       content,
       tag,
@@ -157,7 +162,7 @@ export default function NoteEditor() {
   const handleTyping = () => {
     if (!isTyping) {
       setIsTyping(true);
-      setTypingStartTime(Date.now());
+      setTypingStartTime(currentTimestamp);
       setStoppedTypingTime(null);
       setJustStopped(false);
     }
@@ -174,7 +179,7 @@ export default function NoteEditor() {
       
       // If no currentNoteId or this is the first ever note, create a new note
       if (!currentNoteId || myNotes.length === 0) {
-        const newId = Date.now();
+        const newId = currentTimestamp;
         setCurrentNoteId(newId);
         const newNote = {
           id: newId,
@@ -457,355 +462,285 @@ export default function NoteEditor() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A]">
-      {/* Main Content */}
-      <div className="w-full">
-        {selectedCategory ? (
-          // Category View
-          <div className="p-10">
-            <div className="flex items-center justify-between mb-10">
-              <h1 className="text-2xl font-medium text-white/90">Notes in <span className="text-blue-400">{selectedCategory}</span></h1>
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className="px-5 py-2.5 rounded-lg bg-blue-500/[0.08] text-blue-400 hover:bg-blue-500/[0.12] transition-all duration-200 text-sm font-medium"
-              >
-                Back to Editor
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {myNotes
-                .filter((note) => note.tag === selectedCategory)
-                .map((note) => (
-                  <div
-                    key={note.id}
-                    onClick={() => openNote(note)}
-                    className="p-5 rounded-xl border border-white/[0.03] hover:border-white/[0.08] bg-white/[0.02] cursor-pointer transition-all duration-200 group hover:bg-white/[0.03] hover:translate-y-[-2px]"
-                  >
-                    <h3 className="text-lg font-medium text-white/90 mb-3 group-hover:text-blue-400 line-clamp-1">{note.title}</h3>
-                    <p className="text-sm text-white/50 mb-4 line-clamp-3">{note.content}</p>
-                    <div className="text-xs text-white/30">{new Date(note.updatedAt).toLocaleString()}</div>
-                  </div>
-                ))}
-            </div>
+    <div className="flex flex-col">
+      {/* Editor View */}
+      <div className="flex-1 flex flex-col">
+        {/* Editor Header */}
+        <div className="flex items-center justify-between p-6 border-b border-white/10 bg-[#0A0A0A]/90 backdrop-blur-xl">
+          <div className="flex items-center gap-4 flex-1">
+            <input
+              type="text"
+              placeholder="Untitled"
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                handleTyping();
+              }}
+              className="text-2xl font-semibold bg-transparent border-none focus:outline-none 
+                       text-white/90 placeholder-white/20 flex-1"
+            />
+            <button
+              onClick={handleNewNote}
+              className="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 
+                       text-indigo-400 font-medium text-sm transition-all duration-200 flex items-center gap-2"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              New Note
+            </button>
           </div>
-        ) : (
-          // Editor View
-          <>
-            {/* Header */}
-            <div className="sticky top-0 z-10 bg-[#0A0A0A]/80 backdrop-blur-xl border-b border-white/[0.03]">
-              <div className="max-w-[1200px] mx-auto px-10 py-6 flex items-center justify-between">
-                <button 
-                  onClick={handleNewNote}
-                  className="text-lg font-medium text-white/90 hover:text-blue-400 transition-all flex items-center gap-3"
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-blue-400">
-                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span className="bg-gradient-to-r from-blue-400 to-blue-500 text-transparent bg-clip-text font-semibold">wNotes</span>
-                </button>
-                <button
-                  onClick={() => router.push("/my-notes")}
-                  className={`px-4 py-2 rounded-lg transition-all duration-200 text-sm ${
-                    isMyNotesHighlighted 
-                      ? "bg-emerald-500/[0.08] text-emerald-400 ring-1 ring-emerald-500/20" 
-                      : "bg-white/[0.02] text-white hover:bg-white/[0.04] hover:text-white/90"
-                  }`}
-                >
-                  My Notes ({myNotes.length})
-                </button>
+        </div>
+
+        {/* Toolbar */}
+        <div className="flex items-center gap-2 p-4 border-b border-white/10 bg-[#0A0A0A]/90 backdrop-blur-xl">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSave}
+              className="px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 
+                       hover:bg-indigo-500/20 transition-all duration-200 text-sm 
+                       font-medium flex items-center gap-2"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+              Save
+            </button>
+
+            <div className="h-4 w-px bg-white/[0.04] mx-2" />
+
+            {/* Tag Input */}
+            <div className="relative" ref={categoryDropdownRef}>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.02] 
+                            hover:bg-white/[0.04] transition-colors border border-white/[0.04]">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                  <line x1="7" y1="7" x2="7.01" y2="7"/>
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Add tag..."
+                  value={tag}
+                  onChange={(e) => {
+                    setTag(e.target.value);
+                    setShowTagSuggestions(true);
+                    handleTyping();
+                  }}
+                  onFocus={() => setShowTagSuggestions(true)}
+                  className="bg-transparent border-none outline-none text-sm text-white/90 
+                           placeholder-white/40 w-24"
+                />
               </div>
-            </div>
 
-            {/* Editor Content */}
-            <div className="max-w-[1200px] mx-auto px-10 py-10">
-              <input
-                type="text"
-                placeholder="Untitled"
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  handleTyping();
-                }}
-                className="w-full text-4xl font-medium bg-transparent border-none focus:outline-none text-white/90 placeholder-white/20"
-              />
-              
-              {/* Action Buttons and Tag Input */}
-              <div className="flex items-center justify-between gap-3 mt-4 flex-wrap">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleNewNote}
-                    className="text-xs px-3 py-1.5 rounded-md bg-white/[0.02] text-white/60 hover:text-white/90 hover:bg-white/[0.04] transition-all duration-200 flex items-center gap-1.5"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 5v14M5 12h14"/>
-                    </svg>
-                    New Note
-                  </button>
-
-                  <button
-                    onClick={handleSave}
-                    className="text-xs px-3 py-1.5 rounded-md bg-white/[0.02] text-white/60 hover:text-white/90 hover:bg-white/[0.04] transition-all duration-200 flex items-center gap-1.5"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M19 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3H16L21 8V19C21 20.1046 20.1046 21 19 21Z"/>
-                      <path d="M17 21V13H7V21"/>
-                      <path d="M7 3V8H15"/>
-                    </svg>
-                    Save
-                  </button>
-
-                  {/* Tag Input with Dropdown */}
-                  <div className="relative" ref={categoryDropdownRef}>
-                    <div className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-white/[0.02] text-white/60 hover:text-white/90 hover:bg-white/[0.04] transition-all duration-200">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-                        <line x1="7" y1="7" x2="7.01" y2="7"/>
+              {/* Tag Suggestions Dropdown */}
+              {showTagSuggestions && (
+                <div className="absolute top-full left-0 mt-2 w-56 max-h-60 overflow-y-auto 
+                              rounded-lg border border-white/[0.04] bg-[#0A0A0A]/95 
+                              backdrop-blur-xl shadow-xl z-50">
+                  {getFilteredCategories().map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => handleCreateCategory(cat)}
+                      className="w-full px-3 py-2 text-left text-sm text-white/80 
+                               hover:bg-white/[0.04] hover:text-white/90 transition-colors"
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                  {tag && !categories.includes(tag) && (
+                    <button
+                      onClick={() => handleCreateCategory(tag)}
+                      className="w-full px-3 py-2 text-left text-sm text-indigo-400 
+                               hover:bg-indigo-500/10 transition-colors flex items-center gap-2"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 5v14M5 12h14"/>
                       </svg>
-                      <input
-                        type="text"
-                        placeholder="Add category..."
-                        value={tag}
-                        onChange={(e) => {
-                          setTag(e.target.value);
-                          setShowTagSuggestions(true);
-                          handleTyping();
-                        }}
-                        onFocus={() => setShowTagSuggestions(true)}
-                        className="bg-transparent border-none outline-none text-white/90 placeholder-white/60 w-28"
-                      />
-                      {tag && (
-                        <button
-                          onClick={() => setTag("")}
-                          className="text-white/40 hover:text-white/60"
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M18 6L6 18M6 6l12 12"/>
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Tag Suggestions Dropdown */}
-                    {showTagSuggestions && (
-                      <div className="absolute top-full left-0 mt-1 w-48 max-h-48 overflow-y-auto bg-black/95 border border-white/[0.03] rounded-lg shadow-xl backdrop-blur-xl z-20">
-                        {getFilteredCategories().map((cat) => (
-                          <button
-                            key={cat}
-                            onClick={() => {
-                              setTag(cat);
-                              setShowTagSuggestions(false);
-                              handleTyping();
-                            }}
-                            className="w-full px-3 py-2 text-left text-xs text-white/90 hover:bg-white/[0.03] transition-colors flex items-center gap-2"
-                          >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-                              <line x1="7" y1="7" x2="7.01" y2="7"/>
-                            </svg>
-                            {cat}
-                          </button>
-                        ))}
-                        {tag && !categories.includes(tag) && (
-                          <button
-                            onClick={() => handleCreateCategory(tag)}
-                            className="w-full px-3 py-2 text-left text-xs text-emerald-400 hover:bg-white/[0.03] transition-colors flex items-center gap-2"
-                          >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M12 5v14M5 12h14"/>
-                            </svg>
-                            Add category "{tag}"
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="relative" ref={actionMenuRef}>
-                  <button
-                    onClick={() => setShowActionMenu(!showActionMenu)}
-                    className="text-xs px-3 py-1.5 rounded-md bg-white/[0.02] text-white/60 hover:text-white/90 hover:bg-white/[0.04] transition-all duration-200 flex items-center gap-1.5"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="1"/>
-                      <circle cx="19" cy="12" r="1"/>
-                      <circle cx="5" cy="12" r="1"/>
-                    </svg>
-                    Actions
-                  </button>
-
-                  {/* Actions Menu Dropdown */}
-                  {showActionMenu && (
-                    <div className="absolute top-full right-0 mt-1 w-48 bg-black/95 border border-white/[0.03] rounded-lg shadow-xl backdrop-blur-xl z-20">
-                      <button
-                        onClick={handleShare}
-                        className="w-full px-3 py-2.5 text-left text-xs text-white/90 hover:bg-white/[0.03] transition-colors flex items-center gap-2"
-                      >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"/>
-                        </svg>
-                        Share Note
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowDownloadMenu(!showDownloadMenu);
-                          setShowActionMenu(false);
-                        }}
-                        className="w-full px-3 py-2.5 text-left text-xs text-white/90 hover:bg-white/[0.03] transition-colors flex items-center gap-2 border-t border-white/[0.03]"
-                      >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-                        </svg>
-                        Export As...
-                      </button>
-                    </div>
+                      Create "{tag}"
+                    </button>
                   )}
-                </div>
-              </div>
-
-              <textarea
-                placeholder="Start writing..."
-                value={content}
-                onChange={(e) => {
-                  setContent(e.target.value);
-                  handleTyping();
-                }}
-                className="w-full mt-8 min-h-[400px] bg-transparent border-none focus:outline-none resize-none text-white/80 placeholder-white/20 text-lg leading-relaxed scrollbar-hide"
-              />
-
-              {/* Add last saved indicator between textarea and categories */}
-              {!isTyping && stoppedTypingTime && (
-                <div className="max-w-[1200px] mx-auto px-0 pt-4 pb-0">
-                  <div className="flex justify-end">
-                    <div className="text-xs text-white/40 flex items-center gap-2 mr-0">
-                      Last saved: {getTimeDisplay()}
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-emerald-400">
-                        <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                  </div>
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Categories Section (Below Content) */}
-            <div className="max-w-[1200px] mx-auto px-10 py-10 border-t border-white/[0.03]">
-              <h2 className="text-sm font-medium text-white/40 tracking-wider mb-6">CATEGORIES</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {categories.map((cat) => (
-                  <div
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                      selectedCategory === cat 
-                        ? "bg-blue-500/[0.08] text-blue-400 ring-1 ring-blue-500/20" 
-                        : "hover:bg-white/[0.02] text-white/80 hover:text-white"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 flex-1">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-60 shrink-0">
-                        <path d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M7 7H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M7 12H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M7 17H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      <span className="text-sm truncate">{cat}</span>
-                    </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={handleShare}
+              className="px-3 py-1.5 rounded-lg bg-white/[0.02] text-white/60 
+                       hover:bg-white/[0.04] hover:text-white/90 transition-all 
+                       duration-200 text-sm flex items-center gap-2"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                <polyline points="16 6 12 2 8 6"/>
+                <line x1="12" y1="2" x2="12" y2="15"/>
+              </svg>
+              Share
+            </button>
+
+            <div className="relative" ref={downloadMenuRef}>
+              <button
+                onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+                className="px-3 py-1.5 rounded-lg bg-white/[0.02] text-white/60 
+                         hover:bg-white/[0.04] hover:text-white/90 transition-all 
+                         duration-200 text-sm flex items-center gap-2"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Download
+              </button>
+
+              {showDownloadMenu && (
+                <div className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-white/[0.04] 
+                              bg-[#0A0A0A]/95 backdrop-blur-xl shadow-xl py-1 z-50">
+                  {[
+                    { format: 'txt', label: 'Text File (.txt)' },
+                    { format: 'rtf', label: 'Rich Text (.rtf)' },
+                    { format: 'word', label: 'Word Document (.docx)' },
+                    { format: 'pdf', label: 'PDF Document (.pdf)' }
+                  ].map(({ format, label }) => (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteCategory(cat);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all rounded-md hover:bg-red-500/10 p-1 shrink-0"
+                      key={format}
+                      onClick={(e) => handleDownload(e, format)}
+                      className="w-full px-4 py-2.5 text-left text-sm text-white/80 
+                               hover:bg-white/[0.04] hover:text-white/90 transition-all 
+                               flex items-center gap-3"
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M18 6L6 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M6 6L18 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+                        <polyline points="13 2 13 9 20 9"/>
                       </svg>
+                      {label}
                     </button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </>
-        )}
+          </div>
+        </div>
+
+        {/* Editor Content */}
+        <div className="flex-1 overflow-auto min-h-[45vh] relative">
+          <textarea
+            placeholder="Start writing..."
+            value={content}
+            onChange={(e) => {
+              setContent(e.target.value);
+              handleTyping();
+            }}
+            className="w-full h-full p-6 bg-transparent border-none focus:outline-none 
+                     resize-none text-white/90 placeholder-white/20 text-lg leading-relaxed"
+          />
+          {!isTyping && stoppedTypingTime && (
+            <div className="absolute bottom-2 right-4 flex items-center gap-2 text-sm text-white/40 px-2 py-1 
+                          rounded-md bg-black/20 backdrop-blur-sm border border-white/5">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2v10l4.24 4.24"/>
+                <circle cx="12" cy="12" r="10"/>
+              </svg>
+              Last saved {getTimeDisplay()}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Download Menu */}
-      {showDownloadMenu && (
-        <div 
-          ref={downloadMenuRef}
-          className="fixed top-32 right-10 bg-black/95 border border-white/[0.03] rounded-lg shadow-xl py-2 min-w-[200px] backdrop-blur-xl z-30"
-        >
-          {[
-            { format: "txt", label: "Text File (.txt)" },
-            { format: "rtf", label: "Rich Text (.rtf)" },
-            { format: "word", label: "Word Document (.docx)" },
-            { format: "pdf", label: "PDF Document (.pdf)" },
-          ].map(({ format, label }) => (
-            <button
-              key={format}
-              onClick={(e) => handleDownload(e, format)}
-              className="w-full px-4 py-3 text-left text-sm text-white/90 hover:bg-white/[0.03] transition-colors flex items-center gap-3"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white/40">
-                <path d="M13 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V9L13 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M13 2V9H20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* Categories Section */}
+      <div className="mt-6 p-4 rounded-xl border border-white/10 bg-[#080808] backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-white/[0.02] text-white/60">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                <line x1="7" y1="7" x2="7.01" y2="7"/>
               </svg>
-              {label}
-            </button>
+            </div>
+            <h2 className="text-lg font-medium text-white/80">Categories</h2>
+          </div>
+          <div className="text-sm text-white/40 px-2.5 py-1 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+            {categories.length} categories
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+          {categories.map((cat) => (
+            <div
+              key={cat}
+              onClick={() => router.push(`/category/${encodeURIComponent(cat)}`)}
+              className={`group p-2.5 rounded-lg border transition-all duration-200 cursor-pointer
+                ${selectedCategory === cat 
+                  ? 'border-white/10 bg-white/[0.04]' 
+                  : 'border-white/[0.04] bg-white/[0.02] hover:bg-white/[0.03] hover:border-white/10'}`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-1.5 rounded-lg bg-white/[0.02] text-white/60">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                    <line x1="7" y1="7" x2="7.01" y2="7"/>
+                  </svg>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteCategory(cat);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-white/[0.04] 
+                           text-white/40 hover:text-white/60 transition-all"
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+              <div className="text-sm text-white/80 font-medium truncate mb-1">{cat}</div>
+              <div className="flex items-center gap-1.5 text-xs text-white/40">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                </svg>
+                {myNotes.filter(note => note.tag === cat).length}
+              </div>
+            </div>
           ))}
         </div>
-      )}
+      </div>
 
-      {/* Share URL Modal */}
+      {/* Share Modal */}
       {shareUrl && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-black/95 border border-white/[0.03] rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="w-full max-w-md mx-4 p-6 rounded-xl bg-[#0A0A0A]/95 
+                       backdrop-blur-xl border border-white/[0.04] shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-white/90">Share Note</h3>
+              <h3 className="text-lg font-medium text-white/90">Share Note</h3>
               <button
                 onClick={handleCloseShare}
-                className="text-white/40 hover:text-white/60 transition-colors"
+                className="p-2 rounded-lg hover:bg-white/[0.04] text-white/40 
+                         hover:text-white/90 transition-all"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M18 6L6 18M6 6l12 12"/>
                 </svg>
               </button>
             </div>
-            <div className="flex items-center gap-2 bg-white/[0.02] rounded-lg p-2 mb-4">
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
               <input
                 type="text"
                 value={shareUrl}
                 readOnly
-                className="flex-1 bg-transparent border-none text-xs text-white/90 focus:outline-none"
+                className="flex-1 bg-transparent border-none outline-none text-sm text-white/90"
               />
               <button
                 onClick={handleCopy}
-                className="text-xs px-3 py-1.5 rounded-md bg-white/[0.02] text-white/60 hover:text-white/90 hover:bg-white/[0.04] transition-all duration-200 flex items-center gap-1.5 whitespace-nowrap"
+                className="px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 
+                         hover:bg-indigo-500/20 transition-all duration-200 text-sm font-medium"
               >
-                {showCopied ? (
-                  <>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20 6L9 17L4 12"/>
-                    </svg>
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-                      <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
-                    </svg>
-                    Copy Link
-                  </>
-                )}
+                {showCopied ? "Copied!" : "Copy"}
               </button>
             </div>
-            <p className="text-xs text-white/40">Anyone with this link can view this note.</p>
           </div>
         </div>
       )}
