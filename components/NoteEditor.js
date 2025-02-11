@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import { jsPDF } from "jspdf";
 
-export default function NoteEditor() {
+export default function NoteEditor({ onMyNotesHighlight, onNotesChange }) {
   // Note and UI states
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -35,7 +35,10 @@ export default function NoteEditor() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Add new state for tag suggestions
+  const [tagInput, setTagInput] = useState("");
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const tagInputRef = useRef(null);
 
   // Add new refs and state
   const categoryDropdownRef = useRef(null);
@@ -141,14 +144,8 @@ export default function NoteEditor() {
       JSON.stringify({ id: newNote.id, title, content, tag })
     );
 
-    setStoppedTypingTime(Date.now());
-    setJustStopped(true);
-    setIsMyNotesHighlighted(true);
-    
-    setTimeout(() => {
-      setJustStopped(false);
-      setIsMyNotesHighlighted(false);
-    }, 4000);
+    // Notify parent about notes change
+    onNotesChange?.(updatedNotes);
 
     // Automatically add new tag to categories if not already present
     if (tag && !categories.includes(tag)) {
@@ -156,6 +153,19 @@ export default function NoteEditor() {
       setCategories(newCategories);
       localStorage.setItem("categories", JSON.stringify(newCategories));
     }
+
+    setStoppedTypingTime(Date.now());
+    setJustStopped(true);
+    setIsMyNotesHighlighted(true);
+    
+    // Notify parent about highlight change
+    onMyNotesHighlight?.(true);
+    
+    setTimeout(() => {
+      setJustStopped(false);
+      setIsMyNotesHighlighted(false);
+      onMyNotesHighlight?.(false);
+    }, 2000);
   };
 
   // Modify the handleTyping function to fix auto-save
@@ -233,7 +243,9 @@ export default function NoteEditor() {
   useEffect(() => {
     const savedNotes = localStorage.getItem("my-notes");
     if (savedNotes) {
-      setMyNotes(JSON.parse(savedNotes));
+      const parsedNotes = JSON.parse(savedNotes);
+      setMyNotes(parsedNotes);
+      onNotesChange?.(parsedNotes);
     }
     const savedCurrentNote = localStorage.getItem("current-note");
     if (savedCurrentNote) {
@@ -247,7 +259,7 @@ export default function NoteEditor() {
     if (savedCategories) {
       setCategories(JSON.parse(savedCategories));
     }
-  }, []);
+  }, [onNotesChange]);
 
   const handleShare = async () => {
     try {
@@ -422,24 +434,57 @@ export default function NoteEditor() {
     }
   };
 
-  // Add new function to filter categories based on input
-  const getFilteredCategories = () => {
-    if (!tag) return categories;
+  // Get filtered suggestions based on input
+  const getFilteredSuggestions = () => {
+    if (!tagInput) return categories;
     return categories.filter(cat => 
-      cat.toLowerCase().includes(tag.toLowerCase()) && cat.toLowerCase() !== tag.toLowerCase()
+      cat.toLowerCase().includes(tagInput.toLowerCase()) && 
+      cat.toLowerCase() !== tagInput.toLowerCase()
     );
   };
 
-  // Modify the click handler for new category creation
-  const handleCreateCategory = (newCategory) => {
-    if (newCategory && !categories.includes(newCategory)) {
-      const newCategories = [...categories, newCategory];
-      setCategories(newCategories);
-      localStorage.setItem("categories", JSON.stringify(newCategories));
+  // Handle tag selection
+  const handleTagSelect = (selectedTag) => {
+    if (categories.length >= 7 && !categories.includes(selectedTag)) {
+      alert("You can only create up to 7 categories.");
+      return;
     }
-    setTag(newCategory);
+    setTag(selectedTag);
+    setTagInput("");
     setShowTagSuggestions(false);
+    setSelectedSuggestionIndex(-1);
     handleTyping();
+  };
+
+  // Handle keyboard navigation
+  const handleTagKeyDown = (e) => {
+    const suggestions = getFilteredSuggestions();
+    
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => 
+          prev < suggestions.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => prev > 0 ? prev - 1 : -1);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (selectedSuggestionIndex >= 0 && suggestions[selectedSuggestionIndex]) {
+          handleTagSelect(suggestions[selectedSuggestionIndex]);
+        } else if (tagInput.trim()) {
+          handleTagSelect(tagInput.trim());
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setShowTagSuggestions(false);
+        setSelectedSuggestionIndex(-1);
+        break;
+    }
   };
 
   // Add click outside handlers in useEffect
@@ -511,57 +556,76 @@ export default function NoteEditor() {
 
             <div className="h-4 w-px bg-white/[0.04] mx-2" />
 
-            {/* Tag Input */}
-            <div className="relative" ref={categoryDropdownRef}>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.02] 
-                            hover:bg-white/[0.04] transition-colors border border-white/[0.04]">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-                  <line x1="7" y1="7" x2="7.01" y2="7"/>
-                </svg>
-                <input
-                  type="text"
-                  placeholder="Add tag..."
-                  value={tag}
-                  onChange={(e) => {
-                    setTag(e.target.value);
-                    setShowTagSuggestions(true);
-                    handleTyping();
-                  }}
-                  onFocus={() => setShowTagSuggestions(true)}
-                  className="bg-transparent border-none outline-none text-sm text-white/90 
-                           placeholder-white/40 w-24"
-                />
-              </div>
-
-              {/* Tag Suggestions Dropdown */}
-              {showTagSuggestions && (
-                <div className="absolute top-full left-0 mt-2 w-56 max-h-60 overflow-y-auto 
-                              rounded-lg border border-white/[0.04] bg-[#0A0A0A]/95 
-                              backdrop-blur-xl shadow-xl z-50">
-                  {getFilteredCategories().map((cat) => (
+            {/* New Tag Input System */}
+            <div className="flex items-center gap-2">
+              {tag ? (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20">
+                    <span className="text-sm text-indigo-400">{tag}</span>
                     <button
-                      key={cat}
-                      onClick={() => handleCreateCategory(cat)}
-                      className="w-full px-3 py-2 text-left text-sm text-white/80 
-                               hover:bg-white/[0.04] hover:text-white/90 transition-colors"
+                      onClick={() => {
+                        setTag("");
+                        setTagInput("");
+                        handleTyping();
+                      }}
+                      className="p-0.5 hover:bg-indigo-500/20 rounded transition-colors"
                     >
-                      {cat}
-                    </button>
-                  ))}
-                  {tag && !categories.includes(tag) && (
-                    <button
-                      onClick={() => handleCreateCategory(tag)}
-                      className="w-full px-3 py-2 text-left text-sm text-indigo-400 
-                               hover:bg-indigo-500/10 transition-colors flex items-center gap-2"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M12 5v14M5 12h14"/>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
                       </svg>
-                      Create "{tag}"
                     </button>
-                  )}
+                  </div>
                 </div>
+              ) : (
+                <>
+                  <div className="relative flex-shrink-0">
+                    <input
+                      ref={tagInputRef}
+                      type="text"
+                      value={tagInput}
+                      onChange={(e) => {
+                        setTagInput(e.target.value);
+                        setShowTagSuggestions(true);
+                        setSelectedSuggestionIndex(-1);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && tagInput.trim() && !categories.includes(tagInput.trim())) {
+                          handleTagSelect(tagInput.trim());
+                        }
+                      }}
+                      placeholder="New tag..."
+                      className="w-32 px-3 py-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04] 
+                               text-sm text-white/90 placeholder-white/40 outline-none
+                               focus:border-indigo-500/20 focus:bg-white/[0.04] transition-all"
+                    />
+                    {categories.length >= 7 && (
+                      <div className="absolute left-0 right-0 -bottom-6 text-xs text-red-400">
+                        Max categories reached
+                      </div>
+                    )}
+                  </div>
+                  {categories.length > 0 && (
+                    <>
+                      <div className="h-6 w-px bg-white/[0.04]" />
+                      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-[250px]">
+                        {categories.map((cat, index) => (
+                          <button
+                            key={cat}
+                            onClick={() => handleTagSelect(cat)}
+                            className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/[0.02] hover:bg-white/[0.04] 
+                                     border border-white/[0.04] text-white/80 hover:text-white/90 transition-all whitespace-nowrap 
+                                     flex-shrink-0"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                            </svg>
+                            <span className="text-sm">{cat}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -677,28 +741,30 @@ export default function NoteEditor() {
                   ? 'border-white/10 bg-white/[0.04]' 
                   : 'border-white/[0.04] bg-white/[0.02] hover:bg-white/[0.03] hover:border-white/10'}`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className="p-1.5 rounded-lg bg-white/[0.02] text-white/60">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-                    <line x1="7" y1="7" x2="7.01" y2="7"/>
-                  </svg>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-white/[0.02] text-white/60">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                      <line x1="7" y1="7" x2="7.01" y2="7"/>
+                    </svg>
+                  </div>
+                  <div className="text-sm text-white/80 font-medium truncate">{cat}</div>
                 </div>
-                <button
+                <div
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDeleteCategory(cat);
                   }}
-                  className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-white/[0.04] 
-                           text-white/40 hover:text-white/60 transition-all"
+                  className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-500/10 
+                           text-red-400 transition-all cursor-pointer"
                 >
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M18 6L6 18M6 6l12 12"/>
                   </svg>
-                </button>
+                </div>
               </div>
-              <div className="text-sm text-white/80 font-medium truncate mb-1">{cat}</div>
-              <div className="flex items-center gap-1.5 text-xs text-white/40">
+              <div className="flex items-center gap-1.5 text-xs text-white/40 mt-2">
                 <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
                 </svg>
