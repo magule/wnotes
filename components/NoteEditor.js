@@ -449,6 +449,14 @@ export default function NoteEditor({ onMyNotesHighlight, onNotesChange }) {
       alert("You can only create up to 7 categories.");
       return;
     }
+
+    // If it's a new tag, add it to categories immediately
+    if (!categories.includes(selectedTag)) {
+      const newCategories = [...categories, selectedTag];
+      setCategories(newCategories);
+      localStorage.setItem("categories", JSON.stringify(newCategories));
+    }
+
     setTag(selectedTag);
     setTagInput("");
     setShowTagSuggestions(false);
@@ -476,7 +484,15 @@ export default function NoteEditor({ onMyNotesHighlight, onNotesChange }) {
         if (selectedSuggestionIndex >= 0 && suggestions[selectedSuggestionIndex]) {
           handleTagSelect(suggestions[selectedSuggestionIndex]);
         } else if (tagInput.trim()) {
-          handleTagSelect(tagInput.trim());
+          const newTag = tagInput.trim();
+          // Update categories immediately
+          const newCategories = [...categories, newTag];
+          setCategories(newCategories);
+          localStorage.setItem("categories", JSON.stringify(newCategories));
+          // Set the tag and clear input
+          setTag(newTag);
+          setTagInput("");
+          handleTyping();
         }
         break;
       case 'Escape':
@@ -590,7 +606,15 @@ export default function NoteEditor({ onMyNotesHighlight, onNotesChange }) {
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && tagInput.trim() && !categories.includes(tagInput.trim())) {
-                          handleTagSelect(tagInput.trim());
+                          const newTag = tagInput.trim();
+                          // Update categories immediately
+                          const newCategories = [...categories, newTag];
+                          setCategories(newCategories);
+                          localStorage.setItem("categories", JSON.stringify(newCategories));
+                          // Set the tag and clear input
+                          setTag(newTag);
+                          setTagInput("");
+                          handleTyping();
                         }
                       }}
                       placeholder="New tag..."
@@ -724,7 +748,7 @@ export default function NoteEditor({ onMyNotesHighlight, onNotesChange }) {
                 <line x1="7" y1="7" x2="7.01" y2="7"/>
               </svg>
             </div>
-            <h2 className="text-lg font-medium text-white/80">Categories</h2>
+            <h2 className="text-lg font-medium text-white/80 translate-y-[7px]">Categories</h2>
           </div>
           <div className="text-sm text-white/40 px-2.5 py-1 rounded-lg bg-white/[0.02] border border-white/[0.04]">
             {categories.length} categories
