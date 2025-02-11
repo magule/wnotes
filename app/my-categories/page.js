@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { Document, Packer, Paragraph, TextRun } from "docx";
+import { jsPDF } from "jspdf";
 
 export default function MyCategories() {
   const [categories, setCategories] = useState([]);
   const [notes, setNotes] = useState([]);
   const [newCategory, setNewCategory] = useState("");
   const [showNewCategoryModal, setShowNewCategoryModal] = useState(false);
+  const [downloadingCategory, setDownloadingCategory] = useState(null);
   const router = useRouter();
+  const downloadMenuRef = useRef(null);
 
   useEffect(() => {
     const savedCategories = localStorage.getItem('categories');
@@ -20,6 +24,18 @@ export default function MyCategories() {
     if (savedNotes) {
       setNotes(JSON.parse(savedNotes));
     }
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(event.target)) {
+        setDownloadingCategory(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   const handleDeleteCategory = (categoryName) => {
@@ -48,6 +64,94 @@ export default function MyCategories() {
     localStorage.setItem('categories', JSON.stringify(updatedCategories));
     setNewCategory("");
     setShowNewCategoryModal(false);
+  };
+
+  const handleBulkExport = async (e, category, format) => {
+    e.stopPropagation();
+    const categoryNotes = notes.filter(note => note.tag === category);
+    try {
+      let blob;
+      let extension;
+
+      switch (format) {
+        case 'txt':
+          const txtContent = categoryNotes.map(note => 
+            `${note.title || 'Untitled'}\n\n${note.content}\n\n---\n\n`
+          ).join('');
+          blob = new Blob([txtContent], { type: 'text/plain' });
+          extension = 'txt';
+          break;
+
+        case 'rtf':
+          const rtfContent = `{\\rtf1\\ansi\n${categoryNotes.map(note => 
+            `{\\b ${note.title || 'Untitled'}}\\line\\line\n${note.content}\\line\\line\\line`
+          ).join('')}}`;
+          blob = new Blob([rtfContent], { type: 'application/rtf' });
+          extension = 'rtf';
+          break;
+
+        case 'word':
+          const doc = new Document({
+            sections: [{
+              properties: {},
+              children: categoryNotes.flatMap(note => [
+                new Paragraph({
+                  children: [new TextRun({ text: note.title || 'Untitled', bold: true, size: 32 })],
+                }),
+                new Paragraph({ children: [new TextRun("")] }),
+                new Paragraph({
+                  children: [new TextRun({ text: note.content, size: 24 })],
+                }),
+                new Paragraph({ children: [new TextRun("")] }),
+                new Paragraph({
+                  children: [new TextRun({ text: "---", size: 24 })],
+                }),
+                new Paragraph({ children: [new TextRun("")] }),
+              ])
+            }]
+          });
+          blob = await Packer.toBlob(doc);
+          extension = 'docx';
+          break;
+
+        case 'pdf':
+          const pdf = new jsPDF();
+          let yOffset = 20;
+          
+          categoryNotes.forEach((note, index) => {
+            if (index > 0) {
+              pdf.addPage();
+              yOffset = 20;
+            }
+            
+            pdf.setFontSize(24);
+            pdf.setFont("helvetica", "bold");
+            pdf.text(note.title || 'Untitled', 20, yOffset);
+            
+            pdf.setFontSize(12);
+            pdf.setFont("helvetica", "normal");
+            const textLines = pdf.splitTextToSize(note.content, 170);
+            pdf.text(textLines, 20, yOffset + 20);
+          });
+          
+          blob = pdf.output('blob');
+          extension = 'pdf';
+          break;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${category}_notes.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setDownloadingCategory(null);
+    } catch (error) {
+      console.error('Error generating bulk export:', error);
+      alert('Failed to export notes. Please try again.');
+    }
   };
 
   return (
@@ -169,18 +273,62 @@ export default function MyCategories() {
                       {category}
                     </h2>
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteCategory(category);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-2 rounded-lg hover:bg-red-500/10 
-                             text-red-400 transition-all cursor-pointer"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M18 6L6 18M6 6l12 12"/>
-                    </svg>
-                  </button>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <div className="relative" ref={downloadMenuRef}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDownloadingCategory(downloadingCategory === category ? null : category);
+                        }}
+                        className="p-2 rounded-lg hover:bg-indigo-500/10 text-indigo-400 
+                                 transition-all cursor-pointer"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                          <polyline points="7 10 12 15 17 10"/>
+                          <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                      </button>
+
+                      {downloadingCategory === category && (
+                        <div className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-white/[0.04] 
+                                    bg-[#0A0A0A]/95 backdrop-blur-xl shadow-2xl py-1 z-50">
+                          {[
+                            { format: 'txt', label: 'Text File (.txt)' },
+                            { format: 'rtf', label: 'Rich Text (.rtf)' },
+                            { format: 'word', label: 'Word Document (.docx)' },
+                            { format: 'pdf', label: 'PDF Document (.pdf)' }
+                          ].map(({ format, label }) => (
+                            <button
+                              key={format}
+                              onClick={(e) => handleBulkExport(e, category, format)}
+                              className="w-full px-4 py-2.5 text-left text-sm text-white/80 
+                                       hover:bg-white/[0.04] hover:text-white/90 transition-all 
+                                       flex items-center gap-3"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+                                <polyline points="13 2 13 9 20 9"/>
+                              </svg>
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteCategory(category);
+                      }}
+                      className="p-2 rounded-lg hover:bg-red-500/10 
+                               text-red-400 transition-all cursor-pointer"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-3">
